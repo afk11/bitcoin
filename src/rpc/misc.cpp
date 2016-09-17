@@ -282,7 +282,7 @@ UniValue createmultisig(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() < 2 || params.size() > 3)
     {
-        string msg = "createmultisig nrequired [\"key\",...]\n"
+        string msg = "createmultisig nrequired [\"key\",...] ( fSort )\n"
             "\nCreates a multi-signature address with n signature of m keys required.\n"
             "It returns a json object with the address and redeemScript.\n"
 

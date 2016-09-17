@@ -975,7 +975,7 @@ UniValue addmultisigaddress(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() < 2 || params.size() > 4)
     {
-        string msg = "addmultisigaddress nrequired [\"key\",...] ( \"account\" )\n"
+        string msg = "addmultisigaddress nrequired [\"key\",...] ( \"account\" ) ( fSort )\n"
             "\nAdd a nrequired-to-sign multisignature address to the wallet.\n"
             "Each key is a Bitcoin address or hex-encoded public key.\n"
             "If 'account' is specified (DEPRECATED), assign address to that account.\n"
