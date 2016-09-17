@@ -7,8 +7,6 @@
 
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.util import *
-from test_framework.mininode import CTransaction, COIN
-from io import BytesIO
 
 class SortMultisigTest(BitcoinTestFramework):
     def __init__(self):
@@ -17,8 +15,6 @@ class SortMultisigTest(BitcoinTestFramework):
         self.setup_clean_chain = False
 
     def setup_nodes(self):
-        #This test requires mocktime
-        enable_mocktime()
         return start_nodes(self.num_nodes, self.options.tmpdir)
 
     def run_test(self):
