@@ -966,14 +966,14 @@ UniValue sendmany(const UniValue& params, bool fHelp)
 }
 
 // Defined in rpc/misc.cpp
-extern CScript _createmultisig_redeemScript(const UniValue& params);
+extern CScript _createmultisig_redeemScript(const UniValue& params, bool fSorted);
 
 UniValue addmultisigaddress(const UniValue& params, bool fHelp)
 {
     if (!EnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
-    if (fHelp || params.size() < 2 || params.size() > 3)
+    if (fHelp || params.size() < 2 || params.size() > 4)
     {
         string msg = "addmultisigaddress nrequired [\"key\",...] ( \"account\" )\n"
             "\nAdd a nrequired-to-sign multisignature address to the wallet.\n"
@@ -988,6 +988,7 @@ UniValue addmultisigaddress(const UniValue& params, bool fHelp)
             "       ...,\n"
             "     ]\n"
             "3. \"account\"      (string, optional) DEPRECATED. An account to assign the addresses to.\n"
+            "4. \"fSort\"        (bool, optional) Whether to sort public keys in the resulting redemption script. Default setting is false.\n"
 
             "\nResult:\n"
             "\"bitcoinaddress\"  (string) A bitcoin address associated with the keys.\n"
@@ -1007,8 +1008,13 @@ UniValue addmultisigaddress(const UniValue& params, bool fHelp)
     if (params.size() > 2)
         strAccount = AccountFromValue(params[2]);
 
+    bool fSorted = false;
+    if (params.size() > 3 && params[3].get_bool()) {
+        fSorted = true;
+    }
+
     // Construct using pay-to-script-hash:
-    CScript inner = _createmultisig_redeemScript(params);
+    CScript inner = _createmultisig_redeemScript(params, fSorted);
     CScriptID innerID(inner);
     pwalletMain->AddCScript(inner);
 
