@@ -1025,8 +1025,10 @@ UniValue addmultisigaddress(const JSONRPCRequest& request)
             "       \"address\"  (string) bitcoin address or hex-encoded public key\n"
             "       ...,\n"
             "     ]\n"
-            "3. \"account\"      (string, optional) DEPRECATED. An account to assign the addresses to.\n"
-            "4. sort           (bool, optional) Whether to sort public keys according to BIP67. Default setting is false.\n"
+            "3. options        (object, optional)\n"
+            "   {\n"
+            "     \"sort\"         (bool, optional, default=false) Whether to sort public keys according to BIP67.\n"
+            "   }\n"
 
             "\nResult:\n"
             "\"address\"         (string) A bitcoin address associated with the keys.\n"
@@ -1043,10 +1045,26 @@ UniValue addmultisigaddress(const JSONRPCRequest& request)
     LOCK2(cs_main, pwallet->cs_wallet);
 
     std::string strAccount;
-    if (request.params.size() > 2)
-        strAccount = AccountFromValue(request.params[2]);
+    bool fSorted = false;
 
-    bool fSorted = request.params.size() > 3 && request.params[3].get_bool();
+    if (request.params.size() > 2) {
+        if (request.params[2].type() == UniValue::VSTR) {
+            // Backward compatibility
+            strAccount = AccountFromValue(request.params[2]);
+        } else {
+            const UniValue& options = request.params[2];
+            RPCTypeCheckArgument(options, UniValue::VOBJ);
+            RPCTypeCheckObj(options,
+                {
+                    {"sort", UniValueType(UniValue::VBOOL)},
+                },
+                true, true);
+
+            if (options.exists("sort")) {
+                fSorted = options["sort"].get_bool();
+            }
+        }
+    }
 
     // Construct using pay-to-script-hash:
     CScript inner = _createmultisig_redeemScript(pwallet, request.params, fSorted);
@@ -2907,7 +2925,7 @@ static const CRPCCommand commands[] =
     { "hidden",             "resendwallettransactions", &resendwallettransactions, true,   {} },
     { "wallet",             "abandontransaction",       &abandontransaction,       false,  {"txid"} },
     { "wallet",             "abortrescan",              &abortrescan,              false,  {} },
-    { "wallet",             "addmultisigaddress",       &addmultisigaddress,       true,   {"nrequired","keys","account","sort"} },
+    { "wallet",             "addmultisigaddress",       &addmultisigaddress,       true,   {"nrequired","keys","options|account"} },
     { "wallet",             "addwitnessaddress",        &addwitnessaddress,        true,   {"address"} },
     { "wallet",             "backupwallet",             &backupwallet,             true,   {"destination"} },
     { "wallet",             "bumpfee",                  &bumpfee,                  true,   {"txid", "options"} },
