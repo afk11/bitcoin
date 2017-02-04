@@ -1107,9 +1107,9 @@ UniValue addmultisigaddress(const JSONRPCRequest& request)
         return NullUniValue;
     }
 
-    if (request.fHelp || request.params.size() < 2 || request.params.size() > 4)
+    if (request.fHelp || request.params.size() < 2 || request.params.size() > 3)
     {
-        std::string msg = "addmultisigaddress nrequired [\"key\",...] ( \"account\" ) ( sort )\n"
+        std::string msg = "addmultisigaddress nrequired [\"key\",...] ( \"account\" or options )\n"
             "\nAdd a nrequired-to-sign multisignature address to the wallet.\n"
             "Each key is a Bitcoin address or hex-encoded public key.\n"
             "If 'account' is specified (DEPRECATED), assign address to that account.\n"
@@ -1122,8 +1122,10 @@ UniValue addmultisigaddress(const JSONRPCRequest& request)
             "       \"address\"  (string) bitcoin address or hex-encoded public key\n"
             "       ...,\n"
             "     ]\n"
-            "3. \"account\"      (string, optional) DEPRECATED. An account to assign the addresses to.\n"
-            "4. sort           (bool, optional) Whether to sort public keys according to BIP67. Default setting is false.\n"
+            "3. options        (object, optional)\n"
+            "   {\n"
+            "     \"sort\"       (bool, optional, default=false) Whether to sort public keys according to BIP67.\n"
+            "   }\n"
 
             "\nResult:\n"
             "\"address\"         (string) A bitcoin address associated with the keys.\n"
@@ -1140,10 +1142,26 @@ UniValue addmultisigaddress(const JSONRPCRequest& request)
     LOCK2(cs_main, pwallet->cs_wallet);
 
     std::string strAccount;
-    if (!request.params[2].isNull())
-        strAccount = AccountFromValue(request.params[2]);
+    bool fSorted = false;
 
-    bool fSorted = request.params.size() > 3 && request.params[3].get_bool();
+    if (request.params.size() > 2) {
+        if (request.params[2].type() == UniValue::VSTR) {
+            // Backward compatibility
+            strAccount = AccountFromValue(request.params[2]);
+        } else {
+            const UniValue& options = request.params[2];
+            RPCTypeCheckArgument(options, UniValue::VOBJ);
+            RPCTypeCheckObj(options,
+                {
+                    {"sort", UniValueType(UniValue::VBOOL)},
+                },
+                true, true);
+
+            if (options.exists("sort")) {
+                fSorted = options["sort"].get_bool();
+            }
+        }
+    }
 
     // Construct using pay-to-script-hash:
     CScript inner = _createmultisig_redeemScript(pwallet, request.params, fSorted);
@@ -3234,7 +3252,7 @@ static const CRPCCommand commands[] =
     { "hidden",             "resendwallettransactions", &resendwallettransactions, {} },
     { "wallet",             "abandontransaction",       &abandontransaction,       {"txid"} },
     { "wallet",             "abortrescan",              &abortrescan,              {} },
-    { "wallet",             "addmultisigaddress",       &addmultisigaddress,       {"nrequired","keys","account","sort"} },
+    { "wallet",             "addmultisigaddress",       &addmultisigaddress,       {"nrequired","keys","options|account"} },
     { "wallet",             "addwitnessaddress",        &addwitnessaddress,        {"address","p2sh"} },
     { "wallet",             "backupwallet",             &backupwallet,             {"destination"} },
     { "wallet",             "bumpfee",                  &bumpfee,                  {"txid", "options"} },
