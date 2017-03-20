@@ -407,6 +407,7 @@ struct TxMempoolInfo
 class CTxMemPool
 {
 private:
+    bool isOutputRemoveCustomLog;  // whether to output the custom logs or not when remove txs
     uint32_t nCheckFrequency; //!< Value n means that n times in 2^32 we check.
     unsigned int nTransactionsUpdated;
     CBlockPolicyEstimator* minerPolicyEstimator;
@@ -423,6 +424,7 @@ private:
     void trackPackageRemoved(const CFeeRate& rate);
 
 public:
+    bool isOutputAddCustomLog;  // whether to output the custom logs or not when add txs, main.cpp will use it
 
     static const int ROLLING_FEE_HALFLIFE = 60 * 60 * 12; // public only for testing
 

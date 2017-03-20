@@ -8,6 +8,7 @@
 #include "clientversion.h"
 #include "consensus/consensus.h"
 #include "consensus/validation.h"
+#include "core_io.h"
 #include "main.h"
 #include "policy/policy.h"
 #include "policy/fees.h"
@@ -349,7 +350,7 @@ void CTxMemPoolEntry::UpdateAncestorState(int64_t modifySize, CAmount modifyFee,
 }
 
 CTxMemPool::CTxMemPool(const CFeeRate& _minReasonableRelayFee) :
-    nTransactionsUpdated(0)
+    isOutputRemoveCustomLog(true), nTransactionsUpdated(0), isOutputAddCustomLog(true)
 {
     _clear(); //lock free clear
 
@@ -444,6 +445,11 @@ bool CTxMemPool::addUnchecked(const uint256& hash, const CTxMemPoolEntry &entry,
     totalTxSize += entry.GetTxSize();
     minerPolicyEstimator->processTransaction(entry, fCurrentEstimate);
 
+    if (isOutputAddCustomLog) {
+        // custom log tx
+        customLog.appendf(2/*tx insert*/, "%s|%s", hash.ToString().c_str(), EncodeHexTx(tx).c_str());
+    }
+
     vTxHashes.emplace_back(tx.GetWitnessHash(), newit);
     newit->vTxHashesIdx = vTxHashes.size() - 1;
 
@@ -452,6 +458,12 @@ bool CTxMemPool::addUnchecked(const uint256& hash, const CTxMemPoolEntry &entry,
 
 void CTxMemPool::removeUnchecked(txiter it)
 {
+    if (isOutputRemoveCustomLog) {
+        // custom log tx
+        const CTransaction& tx = it->GetTx();
+        customLog.appendf(4/*tx remove*/, "%s|%s", tx.GetHash().ToString().c_str(), EncodeHexTx(tx).c_str());
+    }
+
     const uint256 hash = it->GetTx().GetHash();
     BOOST_FOREACH(const CTxIn& txin, it->GetTx().vin)
         mapNextTx.erase(txin.prevout);
@@ -613,7 +625,12 @@ void CTxMemPool::removeForBlock(const std::vector<CTransaction>& vtx, unsigned i
         if (it != mapTx.end()) {
             setEntries stage;
             stage.insert(it);
+            // only when new block coming, we don't need to output reject tx logs. Let 'log2producer' handle it,
+            // status change: accept -> confirm. otherwise status change: accept -> reject -> accept -> confirm.
+            // when we get here it's locked already, it safe to set 'isOutputRemoveCustomLog' here
+            isOutputRemoveCustomLog = false;
             RemoveStaged(stage, true);
+            isOutputRemoveCustomLog = true;  // reset to 'true'
         }
         removeConflicts(tx, conflicts);
         ClearPrioritisation(tx.GetHash());

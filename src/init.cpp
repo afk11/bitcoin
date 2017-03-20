@@ -474,6 +474,7 @@ std::string HelpMessage(HelpMessageMode mode)
         strUsage += HelpMessageOpt("-rpcworkqueue=<n>", strprintf("Set the depth of the work queue to service RPC calls (default: %d)", DEFAULT_HTTP_WORKQUEUE));
         strUsage += HelpMessageOpt("-rpcservertimeout=<n>", strprintf("Timeout during HTTP requests (default: %d)", DEFAULT_HTTP_SERVER_TIMEOUT));
     }
+    strUsage += HelpMessageOpt("-customlogdir=<dir>", _("custom log dir"));
 
     return strUsage;
 }
@@ -1519,6 +1520,23 @@ bool AppInit2(boost::thread_group& threadGroup, CScheduler& scheduler)
         threadGroup.create_thread(boost::bind(&ThreadFlushWalletDB, boost::ref(pwalletMain->strWalletFile)));
     }
 #endif
+
+    // ********************************************************* Step: init custom log
+    std::string customLogDir = GetArg("-customlogdir", "");
+    if (customLogDir.length()) {
+        CBlock block;
+        ReadBlockFromDisk(block, chainActive.Tip(), Params().GetConsensus());
+        CDataStream ssBlock(SER_NETWORK, PROTOCOL_VERSION);
+        ssBlock << block;
+        std::string blkHex = HexStr(ssBlock.begin(), ssBlock.end());
+        bool res = customLog.init(customLogDir,
+                                  chainActive.Height(),
+                                  chainActive.Tip()->GetBlockHash().ToString(),
+                                  blkHex);
+        if (!res) {
+            // TODO: throw exception
+        }
+    }
 
     return !fRequestShutdown;
 }

@@ -37,6 +37,7 @@
 
 #include <algorithm>
 #include <fcntl.h>
+#include <sys/file.h>
 #include <sys/resource.h>
 #include <sys/stat.h>
 
@@ -808,4 +809,164 @@ std::string CopyrightHolders(const std::string& strPrefix)
         strCopyrightHolders += "\n" + strPrefix + "The Bitcoin Core developers";
     }
     return strCopyrightHolders;
+}
+
+CustomLog::CustomLog(): isInitialized_(false), fd_(-1), f_(NULL), fileIndex_(0)
+{
+}
+
+CustomLog::~CustomLog() {
+   if (fd_ != -1) {
+       flock(fd_, LOCK_UN);
+       close(fd_);
+       fd_ = -1;
+   }
+
+    if (f_ != NULL) {
+        fclose(f_);
+        f_ = NULL;
+    }
+}
+
+bool CustomLog::init(const std::string dir, const int blockHeight,
+                     const std::string &blockHash, const std::string &blockHex) {
+    namespace fs = boost::filesystem;
+
+    // create dir
+    dir_ = dir;
+    if (dir_[dir_.length() - 1] == '/') {
+        dir_.resize(dir_.length() - 1);  // remove last '/'
+    }
+    fs::path p(dir_);
+    TryCreateDirectory(p);
+    if (!fs::exists(p) || !fs::is_directory(p)) {
+        return false;
+    }
+
+    // create notify file
+    notifyFile_ = dir_ + "/NOTIFY_LOG1PRODUCER";
+    FILE *f = fopen(notifyFile_.c_str(), "w");
+    if (f == NULL) {
+        return false;
+    }
+    fclose(f);
+
+    // lock file
+    const string lockFile = strprintf("%s/LOCK", dir_.c_str());
+    fd_ = open(lockFile.c_str(), O_RDWR|O_CREAT|O_TRUNC, 0644);
+    if (flock(fd_, LOCK_EX) != 0) {
+        LogPrintf("can't lock file: %s\n", lockFile.c_str());
+        return false;
+    }
+
+    // clean all old log files
+    const string logDir = strprintf("%s/files", dir_.c_str());
+    fs::path filesPath(logDir);
+    TryCreateDirectory(filesPath);
+    if (!fs::exists(filesPath) || !fs::is_directory(filesPath)) {
+        return false;
+    }
+    for (fs::directory_iterator end, it(filesPath); it != end; ++it) {
+        LogPrintf("remove old log file: %s\n", it->path().c_str());
+        boost::uintmax_t n = fs::remove_all(it->path());
+        if (n != 1) {
+            LogPrintf("delete file return file number(%u) is NOT 1, file: %s\n",
+                      n, it->path().c_str());
+            return false;
+        }
+    }
+
+    // write begin infomation
+    {
+        const string beginFile = strprintf("%s/BEGIN", dir_.c_str());
+        FILE *fBeginFile = fopen(beginFile.c_str(), "w");
+        if (fBeginFile == NULL) {
+            LogPrintf("open file failure: %s\n", beginFile.c_str());
+            return false;
+        }
+        const string info = strprintf("%u\n", time(NULL));
+        if (fwrite(info.c_str(), 1, info.size(), fBeginFile) != info.size()) {
+            LogPrintf("fwrite file failure: %s\n", beginFile.c_str());
+            return false;
+        }
+        fclose(fBeginFile);
+    }
+
+    // init finish
+    isInitialized_ = true;
+
+    // write begin block
+    trySwitchFile();
+    appendf(1/*block*/, "%d|%s|%s", blockHeight, blockHash.c_str(), blockHex.c_str());
+
+    return true;
+}
+
+bool CustomLog::IsInitialized() {
+    return isInitialized_;
+}
+
+void CustomLog::append(const int logType, const char *str) {
+    boost::mutex::scoped_lock sl(lock_);
+    trySwitchFile();
+
+    const string date = DateTimeStrFormat("%Y-%m-%d %H:%M:%S", GetTime());
+    const string line = strprintf("%s,%d,%s\n", date.c_str(), logType, str);
+
+    fwrite(line.c_str(), line.size(), 1, f_);
+    fflush(f_);
+
+    // IN_CLOSE_NOWRITE
+    FILE *f = fopen(notifyFile_.c_str(), "r");
+    assert(f != NULL);
+    fclose(f);
+}
+
+void CustomLog::appendf(const int logType, const char *fmt, ...) {
+    if (!isInitialized_) { return; }
+
+    // make string
+    char tmp[1024];
+    string dest;
+    va_list al;
+    va_start(al, fmt);
+    int len = vsnprintf(tmp, 1024, fmt, al);
+    va_end(al);
+    if (len > 1023) {
+        char * destbuff = new char[len+1];
+        va_start(al, fmt);
+        len = vsnprintf(destbuff, len+1, fmt, al);
+        va_end(al);
+        dest.append(destbuff, len);
+        delete[] destbuff;
+    } else {
+        dest.append(tmp, len);
+    }
+
+    append(logType, dest.c_str());
+}
+
+void CustomLog::trySwitchFile() {
+    // close old FILE ptr if need
+    if (f_ != NULL) {
+        // check file size
+        long size = ftell(f_);
+        if (size < 500 * 1024 * 1024) {
+            return;  // no need to switch file
+        }
+        fclose(f_);
+        f_ = NULL;
+    }
+
+    // create new file
+    const string filePath = strprintf("%s/files/%d.log",
+                                      dir_.c_str(), fileIndex_++);
+    FILE *f = fopen(filePath.c_str(), "a");
+    if (f == NULL) {
+        LogPrintf("open file failure when switch log: %s\n", filePath.c_str());
+        // TODO: throw exception
+    }
+
+    // switch to new FILE ptr
+    f_ = f;
 }
