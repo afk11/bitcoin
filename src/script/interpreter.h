@@ -15,6 +15,7 @@
 
 class CPubKey;
 class CScript;
+class CExecutionTrace;
 class CTransaction;
 class uint256;
 
@@ -172,6 +173,30 @@ private:
 
 public:
     MutableTransactionSignatureChecker(const CMutableTransaction* txToIn, unsigned int nInIn, const CAmount& amountIn) : TransactionSignatureChecker(&txTo, nInIn, amountIn), txTo(*txToIn) {}
+};
+
+bool EvalScriptBranch(std::vector<std::vector<unsigned char> >& stack, const CScript& script, ScriptError* error = NULL);
+
+typedef std::pair<opcodetype, std::vector<unsigned char>> ExecStep;
+typedef std::vector<ExecStep> ScriptSection;
+
+class CExecutionTrace
+{
+public:
+    std::vector<ScriptSection> segment;
+    ScriptSection current;
+
+    CExecutionTrace() {};
+    void
+    NewSegment()
+    {
+        segment.emplace_back(current);
+        current = ScriptSection();
+    };
+
+    void
+    Operation(opcodetype op, std::vector<unsigned char> data);
+
 };
 
 bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& script, unsigned int flags, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptError* error = NULL);

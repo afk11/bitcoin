@@ -1043,6 +1043,128 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& 
     return set_success(serror);
 }
 
+void CExecutionTrace::Operation(opcodetype op, std::vector<unsigned char> data)
+{
+    ExecStep step = ExecStep(op, data);
+    bool logical = op == OP_IF || op == OP_NOTIF || op == OP_ELSE || op == OP_ENDIF;
+    if (logical) {
+        if (current.size() > 0) {
+            NewSegment();
+        }
+        current.emplace_back(step);
+        NewSegment();
+    } else {
+        current.emplace_back(step);
+    }
+}
+
+bool EvalScriptBranch(std::vector<std::vector<unsigned char> >& stack, const CScript& script, ScriptError* serror)
+{
+    static const CScriptNum bnZero(0);
+    static const CScriptNum bnOne(1);
+    static const CScriptNum bnFalse(0);
+    static const CScriptNum bnTrue(1);
+    static const valtype vchFalse(0);
+    static const valtype vchZero(0);
+    static const valtype vchTrue(1, 1);
+
+    CScript::const_iterator pc = script.begin();
+    CScript::const_iterator pend = script.end();
+    opcodetype opcode;
+    valtype vchPushValue;
+    std::vector<bool> vfExec;
+
+    set_error(serror, SCRIPT_ERR_UNKNOWN_ERROR);
+    if (script.size() > MAX_SCRIPT_SIZE)
+        return set_error(serror, SCRIPT_ERR_SCRIPT_SIZE);
+    int nOpCount = 0;
+
+    CExecutionTrace trace;
+
+    try
+    {
+        while (pc < pend) {
+            bool fExec = !count(vfExec.begin(), vfExec.end(), false);
+
+            //
+            // Read instruction
+            //
+            if (!script.GetOp(pc, opcode, vchPushValue))
+                return set_error(serror, SCRIPT_ERR_BAD_OPCODE);
+
+            // Note how OP_RESERVED does not count towards the opcode limit.
+            if (opcode > OP_16 && ++nOpCount > MAX_OPS_PER_SCRIPT)
+                return set_error(serror, SCRIPT_ERR_OP_COUNT);
+
+            if (opcode == OP_CAT ||
+                opcode == OP_SUBSTR ||
+                opcode == OP_LEFT ||
+                opcode == OP_RIGHT ||
+                opcode == OP_INVERT ||
+                opcode == OP_AND ||
+                opcode == OP_OR ||
+                opcode == OP_XOR ||
+                opcode == OP_2MUL ||
+                opcode == OP_2DIV ||
+                opcode == OP_MUL ||
+                opcode == OP_DIV ||
+                opcode == OP_MOD ||
+                opcode == OP_LSHIFT ||
+                opcode == OP_RSHIFT)
+                return set_error(serror, SCRIPT_ERR_DISABLED_OPCODE); // Disabled opcodes.
+
+            if (OP_IF <= opcode && opcode <= OP_ENDIF) {
+                switch (opcode) {
+                    case OP_IF:
+                    case OP_NOTIF: {
+                        // <expression> if [statements] [else [statements]] endif
+                        bool fValue = false;
+                        if (fExec) {
+                            if (stack.size() < 1)
+                                return set_error(serror, SCRIPT_ERR_UNBALANCED_CONDITIONAL);
+                            valtype &vch = stacktop(-1);
+                            fValue = CastToBool(vch);
+                            if (opcode == OP_NOTIF)
+                                fValue = !fValue;
+                            popstack(stack);
+                        }
+                        vfExec.push_back(fValue);
+                    }
+                        break;
+
+                    case OP_ELSE: {
+                        if (vfExec.empty())
+                            return set_error(serror, SCRIPT_ERR_UNBALANCED_CONDITIONAL);
+                        vfExec.back() = !vfExec.back();
+                    }
+                        break;
+
+                    case OP_ENDIF: {
+                        if (vfExec.empty())
+                            return set_error(serror, SCRIPT_ERR_UNBALANCED_CONDITIONAL);
+                        vfExec.pop_back();
+                    }
+                        break;
+                    default:
+                        return set_error(serror, SCRIPT_ERR_BAD_OPCODE);
+                }
+                trace.Operation(opcode, vchPushValue);
+            } else if (fExec) {
+                trace.Operation(opcode, vchPushValue);
+            }
+        }
+    }
+    catch (...)
+    {
+        return set_error(serror, SCRIPT_ERR_UNKNOWN_ERROR);
+    } 
+
+    if (!vfExec.empty())
+        return set_error(serror, SCRIPT_ERR_UNBALANCED_CONDITIONAL);
+
+    return set_success(serror);
+}
+
 namespace {
 
 /**
