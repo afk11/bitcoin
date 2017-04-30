@@ -175,7 +175,7 @@ public:
     MutableTransactionSignatureChecker(const CMutableTransaction* txToIn, unsigned int nInIn, const CAmount& amountIn) : TransactionSignatureChecker(&txTo, nInIn, amountIn), txTo(*txToIn) {}
 };
 
-bool EvalScriptBranch(std::vector<std::vector<unsigned char> >& stack, const CScript& script, ScriptError* error = NULL);
+bool EvalScriptBranch(std::vector<std::vector<unsigned char> >& stack, const CScript& script, CExecutionTrace& trace, ScriptError* error = NULL);
 
 typedef std::pair<opcodetype, std::vector<unsigned char>> ExecStep;
 typedef std::vector<ExecStep> ScriptSection;
@@ -196,6 +196,8 @@ public:
 
     void
     Operation(opcodetype op, std::vector<unsigned char> data);
+    void
+    Done();
 
 };
 

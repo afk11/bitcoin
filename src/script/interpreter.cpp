@@ -1043,6 +1043,12 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CScript& 
     return set_success(serror);
 }
 
+void CExecutionTrace::Done() {
+    if (current.size() > 0) {
+        NewSegment();
+    }
+}
+
 void CExecutionTrace::Operation(opcodetype op, std::vector<unsigned char> data)
 {
     ExecStep step = ExecStep(op, data);
@@ -1058,7 +1064,7 @@ void CExecutionTrace::Operation(opcodetype op, std::vector<unsigned char> data)
     }
 }
 
-bool EvalScriptBranch(std::vector<std::vector<unsigned char> >& stack, const CScript& script, ScriptError* serror)
+bool EvalScriptBranch(std::vector<std::vector<unsigned char> >& stack, const CScript& script, CExecutionTrace& trace, ScriptError* serror)
 {
     static const CScriptNum bnZero(0);
     static const CScriptNum bnOne(1);
@@ -1078,8 +1084,6 @@ bool EvalScriptBranch(std::vector<std::vector<unsigned char> >& stack, const CSc
     if (script.size() > MAX_SCRIPT_SIZE)
         return set_error(serror, SCRIPT_ERR_SCRIPT_SIZE);
     int nOpCount = 0;
-
-    CExecutionTrace trace;
 
     try
     {
@@ -1157,10 +1161,12 @@ bool EvalScriptBranch(std::vector<std::vector<unsigned char> >& stack, const CSc
     catch (...)
     {
         return set_error(serror, SCRIPT_ERR_UNKNOWN_ERROR);
-    } 
+    }
 
     if (!vfExec.empty())
         return set_error(serror, SCRIPT_ERR_UNBALANCED_CONDITIONAL);
+
+    trace.Done();
 
     return set_success(serror);
 }

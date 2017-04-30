@@ -579,6 +579,90 @@ UniValue decodescript(const JSONRPCRequest& request)
     return r;
 }
 
+CScript SectionToScript(ScriptSection trace) {
+    CScript script;
+    for (unsigned int j = 0; j < trace.size(); j++) {
+        ExecStep op = trace[j];
+        if (op.first < OP_PUSHDATA4) {
+            script << op.second;
+        } else {
+            script << op.first;
+        }
+    }
+    return script;
+}
+
+UniValue decodescriptbranch(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() != 2)
+        throw std::runtime_error(
+                "decodescriptbranch \"script\" \"[bool]\"\n"
+                        "\nDecode a hex-encoded script into a specific execution path.\n"
+                        "\nArguments:\n"
+                        "1. \"hexstring\"     (string) the hex encoded script\n"
+                        "2. \"branches\"      (string) the hex encoded script\n"
+                        "\nResult:\n"
+                        "{\n"
+                        "  \"asm\":\"asm\",   (string) Script public key\n"
+                        "  \"hex\":\"hex\",   (string) hex encoded public key\n"
+                        "  \"type\":\"type\", (string) The output type\n"
+                        "  \"reqSigs\": n,    (numeric) The required signatures\n"
+                        "  \"addresses\": [   (json array of string)\n"
+                        "     \"address\"     (string) bitcoin address\n"
+                        "     ,...\n"
+                        "  ],\n"
+                        "  \"p2sh\",\"address\" (string) address of P2SH script wrapping this redeem script (not returned if the script is already a P2SH).\n"
+                        "}\n"
+                        "\nExamples:\n"
+                + HelpExampleCli("decodescriptbranch", "\"hexstring\" \"[false, true]\"")
+                + HelpExampleRpc("decodescriptbranch", "\"hexstring\" \"[false, true]\"")
+        );
+
+    RPCTypeCheck(request.params, boost::assign::list_of(UniValue::VSTR)(UniValue::VARR)(UniValue::VBOOL));
+
+    typedef std::vector<unsigned char> valtype;
+    static const valtype vchZero(0);
+    static const valtype vchTrue(1, 1);
+
+    UniValue r(UniValue::VOBJ);
+    CScript script;
+    if (request.params[0].get_str().size() > 0){
+        std::vector<unsigned char> scriptData(ParseHexV(request.params[0], "argument"));
+        script = CScript(scriptData.begin(), scriptData.end());
+    } else {
+        // Empty scripts are valid
+    }
+
+    UniValue vfInputs = request.params[1].get_array();
+    std::vector<std::vector<unsigned char> > mainStack;
+    for (unsigned int i = 0; i < vfInputs.size(); i++) {
+        if (!vfInputs[i].isBool()) {
+            throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "Invalid value for vfInput");
+        }
+        mainStack.emplace_back(vfInputs[i].get_bool() ? vchTrue : vchZero);
+    }
+
+    ScriptError serror = SCRIPT_ERR_OK;
+    CExecutionTrace trace;
+
+    if (!EvalScriptBranch(mainStack, script, trace, &serror)) {
+        r.push_back(Pair("error", ScriptErrorString(serror)));
+    } else {
+        ScriptPubKeyToJSON(script, r, false);
+
+        UniValue list(UniValue::VARR);
+        for (unsigned int idx = 0; idx < trace.segment.size(); idx++) {
+            ScriptSection segment = trace.segment[idx];
+            script = SectionToScript(segment);
+            list.push_back(ScriptToAsmStr(script));
+        }
+
+        r.push_back(Pair("steps", list));
+    }
+
+    return r;
+}
+
 /** Pushes a JSON object for script verification or signing errors to vErrorsRet. */
 static void TxInErrorToJSON(const CTxIn& txin, UniValue& vErrorsRet, const std::string& strMessage)
 {
@@ -939,6 +1023,7 @@ static const CRPCCommand commands[] =
     { "rawtransactions",    "createrawtransaction",   &createrawtransaction,   true,  {"inputs","outputs","locktime"} },
     { "rawtransactions",    "decoderawtransaction",   &decoderawtransaction,   true,  {"hexstring"} },
     { "rawtransactions",    "decodescript",           &decodescript,           true,  {"hexstring"} },
+    { "rawtransactions",    "decodescriptbranch",     &decodescriptbranch,     true,  {"hexstring","vfInput"} },
     { "rawtransactions",    "sendrawtransaction",     &sendrawtransaction,     false, {"hexstring","allowhighfees"} },
     { "rawtransactions",    "signrawtransaction",     &signrawtransaction,     false, {"hexstring","prevtxs","privkeys","sighashtype"} }, /* uses wallet if enabled */
 
