@@ -80,6 +80,18 @@ void InitSignatureCache()
             (nElems*sizeof(uint256)) >>20, (nMaxCacheSize*2)>>20, nElems);
 }
 
+uint256 CachingTransactionSignatureChecker::CalculateSignatureHash(const CScript &scriptCode, int nHashType, SigVersion sigversion) const {
+    uint256 entry, value;
+    hashMap.ComputeEntry(entry, scriptCode, nHashType, sigversion);
+    if (!hashMap.Get(entry, value)) {
+        value = TransactionSignatureChecker::CalculateSignatureHash(scriptCode, nHashType, sigversion);
+        if (store)
+            hashMap.Set(entry, value);
+    }
+
+    return value;
+}
+
 bool CachingTransactionSignatureChecker::VerifySignature(const std::vector<unsigned char>& vchSig, const CPubKey& pubkey, const uint256& sighash) const
 {
     uint256 entry;

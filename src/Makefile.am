@@ -134,6 +134,7 @@ BITCOIN_CORE_H = \
   rpc/register.h \
   scheduler.h \
   script/sigcache.h \
+  script/sighashcache.h \
   script/sign.h \
   script/standard.h \
   script/ismine.h \
