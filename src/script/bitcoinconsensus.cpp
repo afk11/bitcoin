@@ -6,6 +6,7 @@
 #include <script/bitcoinconsensus.h>
 
 #include <primitives/transaction.h>
+#include <stdio.h>
 #include <pubkey.h>
 #include <script/interpreter.h>
 #include <version.h>
@@ -81,22 +82,31 @@ static int verify_script(const unsigned char *scriptPubKey, unsigned int scriptP
                                     unsigned int nIn, unsigned int flags, bitcoinconsensus_error* err)
 {
     if (!verify_flags(flags)) {
+       printf("invalid flags\n");
         return bitcoinconsensus_ERR_INVALID_FLAGS;
     }
     try {
         TxInputStream stream(SER_NETWORK, PROTOCOL_VERSION, txTo, txToLen);
         CTransaction tx(deserialize, stream);
-        if (nIn >= tx.vin.size())
+        if (nIn >= tx.vin.size()) {
+	    printf("invalid tx index\n");
             return set_error(err, bitcoinconsensus_ERR_TX_INDEX);
-        if (GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION) != txToLen)
+	}
+        if (GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION) != txToLen) {
+	    //printf("invalid tx size\n");
             return set_error(err, bitcoinconsensus_ERR_TX_SIZE_MISMATCH);
+	}
 
+	printf("nInput: %d\n", nIn);
+	printf("flags: %d\n", flags);
+	printf("txLen: %d\n", txToLen);
         // Regardless of the verification result, the tx did not error.
         set_error(err, bitcoinconsensus_ERR_OK);
 
         PrecomputedTransactionData txdata(tx);
         return VerifyScript(tx.vin[nIn].scriptSig, CScript(scriptPubKey, scriptPubKey + scriptPubKeyLen), &tx.vin[nIn].scriptWitness, flags, TransactionSignatureChecker(&tx, nIn, amount, txdata), nullptr);
     } catch (const std::exception&) {
+        printf("set error tx deserialize\n");
         return set_error(err, bitcoinconsensus_ERR_TX_DESERIALIZE); // Error deserializing
     }
 }
