@@ -179,8 +179,8 @@ BOOST_AUTO_TEST_CASE(script_standard_ExtractDestination)
     s.clear();
     s << ToByteVector(pubkey) << OP_CHECKSIG;
     BOOST_CHECK(ExtractDestination(s, address));
-    BOOST_CHECK(boost::get<CKeyID>(&address) &&
-                *boost::get<CKeyID>(&address) == pubkey.GetID());
+    BOOST_CHECK(boost::get<CPubKey>(&address) &&
+                *boost::get<CPubKey>(&address) == pubkey);
 
     // TX_PUBKEYHASH
     s.clear();
@@ -255,8 +255,8 @@ BOOST_AUTO_TEST_CASE(script_standard_ExtractDestinations)
     BOOST_CHECK_EQUAL(whichType, TX_PUBKEY);
     BOOST_CHECK_EQUAL(addresses.size(), 1U);
     BOOST_CHECK_EQUAL(nRequired, 1);
-    BOOST_CHECK(boost::get<CKeyID>(&addresses[0]) &&
-                *boost::get<CKeyID>(&addresses[0]) == pubkeys[0].GetID());
+    BOOST_CHECK(boost::get<CPubKey>(&addresses[0]) &&
+                *boost::get<CPubKey>(&addresses[0]) == pubkeys[0]);
 
     // TX_PUBKEYHASH
     s.clear();

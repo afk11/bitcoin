@@ -16,6 +16,7 @@
 static const bool DEFAULT_ACCEPT_DATACARRIER = true;
 
 class CKeyID;
+class CPubKey;
 class CScript;
 
 /** A reference to a CScript: the Hash160 of its serialization (see script.h) */
@@ -114,13 +115,14 @@ struct WitnessUnknown
  * A txout script template with a specific destination. It is either:
  *  * CNoDestination: no destination set
  *  * CKeyID: TX_PUBKEYHASH destination (P2PKH)
+ *  * CPubKey: TX_PUBKEY destination (P2PK)
  *  * CScriptID: TX_SCRIPTHASH destination (P2SH)
  *  * WitnessV0ScriptHash: TX_WITNESS_V0_SCRIPTHASH destination (P2WSH)
  *  * WitnessV0KeyHash: TX_WITNESS_V0_KEYHASH destination (P2WPKH)
  *  * WitnessUnknown: TX_WITNESS_UNKNOWN destination (P2W???)
  *  A CTxDestination is the internal data type encoded in a bitcoin address
  */
-typedef boost::variant<CNoDestination, CKeyID, CScriptID, WitnessV0ScriptHash, WitnessV0KeyHash, WitnessUnknown> CTxDestination;
+typedef boost::variant<CNoDestination, CPubKey, CKeyID, CScriptID, WitnessV0ScriptHash, WitnessV0KeyHash, WitnessUnknown> CTxDestination;
 
 /** Check whether a CTxDestination is a CNoDestination. */
 bool IsValidDestination(const CTxDestination& dest);

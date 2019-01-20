@@ -181,6 +181,9 @@ CKeyID GetKeyForDestination(const CKeyStore& store, const CTxDestination& dest)
     if (auto id = boost::get<CKeyID>(&dest)) {
         return *id;
     }
+    if (auto key = boost::get<CPubKey>(&dest)) {
+        return key->GetID();
+    }
     if (auto witness_id = boost::get<WitnessV0KeyHash>(&dest)) {
         return CKeyID(*witness_id);
     }

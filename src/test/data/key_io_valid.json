@@ -1,5 +1,32 @@
 [
     [
+        "04abd6199f8358cc23cc29a13ad773837090560f73b0b1484bb13dbf94fa2eab6c4012f7ccaccc078df23977fbd424736f27ca9cce610a855a3b62bbf54bf114e5",
+        "4104abd6199f8358cc23cc29a13ad773837090560f73b0b1484bb13dbf94fa2eab6c4012f7ccaccc078df23977fbd424736f27ca9cce610a855a3b62bbf54bf114e5ac",
+        {
+            "isPrivkey": false,
+            "tryCaseFlip": true,
+            "chain": "main"
+        }
+    ],
+    [
+        "03c64ed1441acfb6ce7ec88be3062b5b298941e9cf14f97290b363b0a8fb50eec3",
+        "2103c64ed1441acfb6ce7ec88be3062b5b298941e9cf14f97290b363b0a8fb50eec3ac",
+        {
+            "isPrivkey": false,
+            "tryCaseFlip": true,
+            "chain": "main"
+        }
+    ],
+    [
+        "02238eb22355f33f5b18adeca868fffa9f2df2cd259ff3e7cac2cd07d7f8485d65",
+        "2102238eb22355f33f5b18adeca868fffa9f2df2cd259ff3e7cac2cd07d7f8485d65ac",
+        {
+            "isPrivkey": false,
+            "tryCaseFlip": true,
+            "chain": "main"
+        }
+    ],
+    [
         "1AGNa15ZQXAZUgFiqJ2i7Z2DPU2J6hW62i",
         "76a91465a16059864a2fdbc7c99a4723a8395bc6f188eb88ac",
         {

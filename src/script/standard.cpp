@@ -162,7 +162,7 @@ bool ExtractDestination(const CScript& scriptPubKey, CTxDestination& addressRet)
         if (!pubKey.IsValid())
             return false;
 
-        addressRet = pubKey.GetID();
+        addressRet = pubKey;
         return true;
     }
     else if (whichType == TX_PUBKEYHASH)
@@ -253,6 +253,12 @@ public:
     bool operator()(const CKeyID &keyID) const {
         script->clear();
         *script << OP_DUP << OP_HASH160 << ToByteVector(keyID) << OP_EQUALVERIFY << OP_CHECKSIG;
+        return true;
+    }
+
+    bool operator()(const CPubKey &key) const {
+        script->clear();
+        *script << ToByteVector(key) << OP_CHECKSIG;
         return true;
     }
 

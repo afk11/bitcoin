@@ -3507,6 +3507,17 @@ public:
         return obj;
     }
 
+    UniValue operator()(const CPubKey& key) const
+    {
+        UniValue obj(UniValue::VOBJ);
+        CPubKey vchPubKey;
+        if (pwallet && pwallet->GetPubKey(key.GetID(), vchPubKey)) {
+            obj.pushKV("pubkey", HexStr(vchPubKey));
+            obj.pushKV("iscompressed", vchPubKey.IsCompressed());
+        }
+        return obj;
+    }
+
     UniValue operator()(const CScriptID& scriptID) const
     {
         UniValue obj(UniValue::VOBJ);
