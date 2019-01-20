@@ -86,6 +86,14 @@ public:
         return obj;
     }
 
+    UniValue operator()(const CPubKey& key) const
+    {
+        UniValue obj(UniValue::VOBJ);
+        obj.pushKV("isscript", false);
+        obj.pushKV("iswitness", false);
+        return obj;
+    }
+
     UniValue operator()(const CScriptID& scriptID) const
     {
         UniValue obj(UniValue::VOBJ);

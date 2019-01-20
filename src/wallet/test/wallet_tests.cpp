@@ -383,9 +383,7 @@ public:
 
 BOOST_FIXTURE_TEST_CASE(ListCoins, ListCoinsTestingSetup)
 {
-    std::string coinbaseAddress = coinbaseKey.GetPubKey().GetID().ToString();
-
-    // Confirm ListCoins initially returns 1 coin grouped under coinbaseKey
+    // Confirm ListCoins initially returns 1 coin grouped under coinbaseKey <<<<<<< HEAD
     // address.
     std::map<CTxDestination, std::vector<COutput>> list;
     {
@@ -393,7 +391,8 @@ BOOST_FIXTURE_TEST_CASE(ListCoins, ListCoinsTestingSetup)
         list = wallet->ListCoins(*m_locked_chain);
     }
     BOOST_CHECK_EQUAL(list.size(), 1U);
-    BOOST_CHECK_EQUAL(boost::get<CKeyID>(list.begin()->first).ToString(), coinbaseAddress);
+    BOOST_CHECK(boost::get<CPubKey>(list.begin()->first) == coinbaseKey.GetPubKey());
+
     BOOST_CHECK_EQUAL(list.begin()->second.size(), 1U);
 
     // Check initial balance from one mature coinbase transaction.
@@ -409,7 +408,7 @@ BOOST_FIXTURE_TEST_CASE(ListCoins, ListCoinsTestingSetup)
         list = wallet->ListCoins(*m_locked_chain);
     }
     BOOST_CHECK_EQUAL(list.size(), 1U);
-    BOOST_CHECK_EQUAL(boost::get<CKeyID>(list.begin()->first).ToString(), coinbaseAddress);
+    BOOST_CHECK(boost::get<CPubKey>(list.begin()->first) == coinbaseKey.GetPubKey());
     BOOST_CHECK_EQUAL(list.begin()->second.size(), 2U);
 
     // Lock both coins. Confirm number of available coins drops to 0.
@@ -438,7 +437,7 @@ BOOST_FIXTURE_TEST_CASE(ListCoins, ListCoinsTestingSetup)
         list = wallet->ListCoins(*m_locked_chain);
     }
     BOOST_CHECK_EQUAL(list.size(), 1U);
-    BOOST_CHECK_EQUAL(boost::get<CKeyID>(list.begin()->first).ToString(), coinbaseAddress);
+    BOOST_CHECK(boost::get<CPubKey>(list.begin()->first) == coinbaseKey.GetPubKey());
     BOOST_CHECK_EQUAL(list.begin()->second.size(), 2U);
 }
 

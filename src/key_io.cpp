@@ -33,6 +33,12 @@ public:
         return EncodeBase58Check(data);
     }
 
+    std::string operator()(const CPubKey& key) const
+    {
+        std::vector<unsigned char> data = ToByteVector(key);
+        return HexStr(data.begin(), data.end());
+    }
+
     std::string operator()(const CScriptID& id) const
     {
         std::vector<unsigned char> data = m_params.Base58Prefix(CChainParams::SCRIPT_ADDRESS);
@@ -74,6 +80,15 @@ CTxDestination DecodeDestination(const std::string& str, const CChainParams& par
 {
     std::vector<unsigned char> data;
     uint160 hash;
+    if (IsHex(str)) {
+        data = ParseHex(str);
+        if ((data[0] == 0x04 && data.size() == CPubKey::PUBLIC_KEY_SIZE) ||
+            ((data[0] == 0x02 || data[0] == 0x03) && data.size() == CPubKey::COMPRESSED_PUBLIC_KEY_SIZE)) {
+            CPubKey pubKey(data);
+            return pubKey;
+        }
+    }
+
     if (DecodeBase58Check(str, data)) {
         // base58-encoded Bitcoin addresses.
         // Public-key-hash-addresses have version 0 (or 111 testnet).
