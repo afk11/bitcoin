@@ -366,8 +366,10 @@ class ECPubKey():
             return False
         e = int.from_bytes(TaggedHash("BIPSchnorr", sig[0:32] + self.get_bytes()[1:33] + msg), 'big') % SECP256K1_ORDER
         if self.is_positive:
-            e = SECP256K1_ORDER - 1
+            e = SECP256K1_ORDER - e
         R = SECP256K1.mul([(SECP256K1_G, s), (self.p, e)])
+        print("v R.1 %s" % R[1])
+        print("v R.2 %s" % R[2])
         if jacobi_symbol(R[1] * R[2], SECP256K1_FIELD_SIZE) != 1 or ((r * R[2] * R[2]) % SECP256K1_FIELD_SIZE) != R[0]:
             return False
         return True
@@ -468,6 +470,8 @@ class ECKey():
         R = SECP256K1.affine(SECP256K1.mul([(SECP256K1_G, kp)]))
         k = kp if jacobi_symbol(R[1], SECP256K1_FIELD_SIZE) == 1 else SECP256K1_ORDER - kp
         e = int.from_bytes(TaggedHash("BIPSchnorr", R[0].to_bytes(32, 'big') + pk.get_xonly_bytes() + msg), 'big') % SECP256K1_ORDER
+        print("s R.1 %s" % R[1])
+        print("s R.2 %s" % R[2])
         return R[0].to_bytes(32, 'big') + ((k + e * x) % SECP256K1_ORDER).to_bytes(32, 'big')
 
     def tweak_add(self, tweak):

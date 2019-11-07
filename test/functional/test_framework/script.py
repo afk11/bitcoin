@@ -760,7 +760,10 @@ def taproot_tree_helper(scripts):
         if isinstance(script, tuple):
             version, script = script
         assert isinstance(script, bytes)
-        h = TaggedHash("TapLeaf", bytes([version & 0xfe]) + ser_string(script))
+        leafPreimage = bytes([version & 0xfe]) + ser_string(script)
+        print("leaf preimage %s" % leafPreimage.hex())
+        h = TaggedHash("TapLeaf", leafPreimage)
+        print("leaf hash %s" % h.hex())
         return ([(version, script, bytes())], h)
     split_pos = len(scripts) // 2
     left, left_h = taproot_tree_helper(scripts[0:split_pos])
@@ -783,10 +786,16 @@ def taproot_construct(pubkey, scripts=[]):
 
     Returns: script (sPK or redeemScript), tweak, {script:control, ...}
     """
+    print ("sample null hash TapLeaf: %s" % TaggedHash("TapLeaf", bytes()).hex())
     if len(scripts) == 0:
         return (CScript([OP_1, pubkey.get_xonly_bytes()]), bytes([0 for i in range(32)]), {})
 
     ret, h = taproot_tree_helper(scripts)
+    print("tree hash %s" % h.hex())
+    for x in ret:
+        print("  version %s" % x[0])
+        print("  script  %s" % x[1].hex())
+        print("  control  %s" % x[2].hex())
     pubkey.set_xonly(pubkey.get_xonly_bytes())
     tweak = TaggedHash("TapTweak", pubkey.get_xonly_bytes() + h)
     tweaked = pubkey.tweak_add(tweak)
